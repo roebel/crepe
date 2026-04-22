@@ -5,7 +5,15 @@ import os
 import re
 import sys
 
-from scipy.io import wavfile
+try :
+    from pysndfile import sndio
+    class wavfile(object):
+        @staticmethod
+        def read(file):
+            snd, sr, *_ = sndio.read(file)
+            return sr, snd
+except ImportError:
+    from scipy.io import wavfile
 import numpy as np
 from numpy.lib.stride_tricks import as_strided
 
@@ -84,9 +92,9 @@ def build_and_load_model(model_capacity):
 
 def output_path(file, suffix, output_dir):
     """
-    return the output path of an output file corresponding to a wav file
+    return the output path of an output file corresponding to an audio file
     """
-    path = re.sub(r"(?i).wav$", suffix, file)
+    path = os.path.splitext(file)[0] + suffix
     if output_dir is not None:
         path = os.path.join(output_dir, os.path.basename(path))
     return path
@@ -344,7 +352,7 @@ def process_file(file, output=None, model_capacity='full', viterbi=False,
     # save the salience visualization in a PNG file
     if save_plot:
         import matplotlib.cm
-        from imageio import imwrite
+        import matplotlib.image
 
         plot_file = output_path(file, ".activation.png", output)
         # to draw the low pitches in the bottom
@@ -358,9 +366,8 @@ def process_file(file, output=None, model_capacity='full', viterbi=False,
             image = np.pad(image, [(0, 20), (0, 0), (0, 0)], mode='constant')
             image[-20:-10, :, :] = inferno(confidence)[np.newaxis, :, :]
             image[-10:, :, :] = (
-                inferno((confidence > 0.5).astype(np.float))[np.newaxis, :, :])
+                inferno((confidence > 0.5).astype(float))[np.newaxis, :, :])
 
-        imwrite(plot_file, (255 * image).astype(np.uint8))
+        matplotlib.image.imsave(plot_file, image)
         if verbose:
             print("CREPE: Saved the salience plot at {}".format(plot_file))
-

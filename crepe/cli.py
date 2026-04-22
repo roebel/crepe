@@ -5,19 +5,28 @@ import sys
 from argparse import ArgumentParser, RawDescriptionHelpFormatter
 from argparse import ArgumentTypeError
 
+try :
+    from pysndfile import sndio
+    file_extensions = ['.wav', '.flac', '.ogg', '.mp3', '.aiff', '.aif', '.aifc']
+    AUDIO_TAG= "audio"
+except ImportError:
+    file_extensions = ['.wav']
+    AUDIO_TAG = "wav"
+    pass
+
 from .core import process_file
 
 
 def run(filename, output=None, model_capacity='full', viterbi=False,
         save_activation=False, save_plot=False, plot_voicing=False,
         no_centering=False, step_size=10, verbose=True):
-    """
-    Collect the WAV files to process and run the model
+    f"""
+    Collect the {AUDIO_TAG} files to process and run the model
 
     Parameters
     ----------
     filename : list
-        List containing paths to WAV files or folders containing WAV files to
+        List containing paths to {AUDIO_TAG} files or folders containing {AUDIO_TAG} files to
         be analyzed.
     output : str or None
         Path to directory for saving output files. If None, output files will
@@ -52,14 +61,14 @@ def run(filename, output=None, model_capacity='full', viterbi=False,
     for path in filename:
         if os.path.isdir(path):
             found = ([file for file in os.listdir(path) if
-                      file.lower().endswith('.wav')])
+                      any(file.lower().endswith(ext) for ext in file_extensions)])
             if len(found) == 0:
-                print('CREPE: No WAV files found in directory {}'.format(path),
+                print('CREPE: No {} files found in directory {}'.format(AUDIO_TAG, path),
                       file=sys.stderr)
             files += [os.path.join(path, file) for file in found]
         elif os.path.isfile(path):
-            if not path.lower().endswith('.wav'):
-                print('CREPE: Expecting WAV file(s) but got {}'.format(path),
+            if not any(path.lower().endswith(ext) for ext in file_extensions):
+                print('CREPE: Expecting {} file(s) but got {}'.format(AUDIO_TAG, path),
                       file=sys.stderr)
             files.append(path)
         else:
@@ -130,7 +139,7 @@ def main():
                         choices=['tiny', 'small', 'medium', 'large', 'full'],
                         help='String specifying the model capacity; smaller '
                              'models are faster to compute, but may yield '
-                             'less accurate pitch estimation')
+                             f'less accurate pitch estimation (Def: %(default)s)')
     parser.add_argument('--viterbi', '-V', action='store_true',
                         help='perform Viterbi decoding to smooth the pitch '
                              'curve')
@@ -153,7 +162,7 @@ def main():
                              "is generally not recommended.")
     parser.add_argument('--step-size', '-s', default=10, type=positive_int,
                         help='The step size in milliseconds for running '
-                             'pitch estimation. The default is 10 ms.')
+                             f'pitch estimation (Def: %(default)sms)')
     parser.add_argument('--quiet', '-q', default=False,
                         action='store_true',
                         help='Suppress all non-error printouts (e.g. progress '
